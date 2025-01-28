@@ -19,10 +19,18 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.harikishore_12.Storeconnect"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "entryPoint": "./index.js",
+    "extra": {
+      "eas": {
+        "projectId": "742d6bcf-5f0b-479c-938d-34fd45ad12b2"
+      }
     }
   }
 }
