@@ -1,13 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { collection, doc, setDoc } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
-import { firestore, db } from "../../Utils/firebase";
-
-
-
-const auth = getAuth();
+import { doc, setDoc } from "firebase/firestore";
+import { auth, db } from "../../Utils/firebase";
 
 const SignUpScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -15,40 +10,48 @@ const SignUpScreen = ({ navigation }) => {
   const [role, setRole] = useState("");
 
   const handleSignUp = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter email and password.");
+      return;
+    }
+  
     if (!role) {
       Alert.alert("Error", "Please select a role before signing up!");
       return;
     }
   
     try {
+      // Step 1: Create user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential?.user;
+      const user = userCredential.user;
   
       if (!user || !user.uid) {
         Alert.alert("Error", "User data is missing!");
         return;
       }
   
-      // Save user details in Firestore
-      await setDoc(doc(db, "users", user.uid), {
+      // Step 2: Store user details in Firestore
+      const userDocRef = doc(db, "users", user.uid); // Use user.uid as the document ID
+      await setDoc(userDocRef, {
         email: user.email,
         role: role,
       });
   
+     // console.log("User document created in Firestore with ID:", user.uid); // Log the document ID
       Alert.alert("Success", "User registered successfully!");
   
+      // Step 3: Navigate based on role AFTER Firestore write completes
       if (role === "Retailer") {
-        navigation.navigate("StoreRegistration", { userId: user.uid });  // Pass user ID to next screen
+        navigation.replace("StoreRegistration", { userId: user.uid });
       } else {
-        navigation.navigate("CustomerHome");
+        navigation.replace("CustomerHome");
       }
     } catch (error) {
-      console.error("Error signing up user:", error.message);
+      console.error("Signup error:", error.message);
       Alert.alert("Error", error.message);
     }
   };
-  
-  
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Sign Up</Text>
@@ -57,10 +60,10 @@ const SignUpScreen = ({ navigation }) => {
       <View style={styles.roleContainer}>
         <Button title="Customer" onPress={() => setRole("Customer")} />
         <Button title="Retailer" onPress={() => setRole("Retailer")} />
-        {role && <Text style={styles.selectedRole}>Selected Role: {role}</Text>}
       </View>
+      {role && <Text style={styles.selectedRole}>Selected Role: {role}</Text>}
 
-      {/* Email and Password Inputs */}
+      {/* Email Input */}
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -68,23 +71,27 @@ const SignUpScreen = ({ navigation }) => {
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
-        editable={!!role}
       />
+
+      {/* Password Input */}
       <TextInput
         style={styles.input}
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
-        editable={!!role}
       />
 
-      <Button title="Sign Up" onPress={handleSignUp} disabled={!role} />
+      {/* Sign Up Button */}
+      <Button title="Sign Up" onPress={handleSignUp} />
+      
+      {/* Navigation to Login */}
       <Button title="Go to Login" onPress={() => navigation.navigate("Login")} />
     </View>
   );
 };
 
+// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -107,6 +114,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 16,
     marginTop: 10,
+    fontWeight: "bold",
   },
   input: {
     height: 50,
@@ -115,9 +123,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 15,
     paddingHorizontal: 10,
-    backgroundColor: "#fff",  
+    backgroundColor: "#fff",
   },
 });
-
 
 export default SignUpScreen;

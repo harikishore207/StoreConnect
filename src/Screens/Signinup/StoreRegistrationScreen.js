@@ -1,9 +1,21 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Button, Alert, TouchableOpacity, Image, ScrollView, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  Alert,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+} from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { getAuth } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { getFirestore, collection, addDoc } from 'firebase/firestore';
+import { getAuth } from "firebase/auth";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
 import MapView, { Marker } from "react-native-maps";
 import { useNavigation } from "@react-navigation/native";
 
@@ -16,7 +28,10 @@ const StoreRegistrationScreen = () => {
   const [address, setAddress] = useState("");
   const [pinCode, setPinCode] = useState("");
   const [storeDescription, setStoreDescription] = useState("");
-  const [location, setLocation] = useState({ latitude: 11.0242576, longitude: 77.0041961 });
+  const [location, setLocation] = useState({
+    latitude: 11.0242576,
+    longitude: 77.0041961,
+  });
   const [images, setImages] = useState([]);
 
   // Function to pick images
@@ -24,16 +39,14 @@ const StoreRegistrationScreen = () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 1,
+      base64: true, // Convert to Base64
     });
-  
+
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setImages((prevImages) => [
-        ...prevImages,
-        ...result.assets.map((asset) => asset.uri).filter((uri) => uri), // Ensure URIs are valid
-      ]);
+      const base64String = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      setImages((prevImages) => [...prevImages, base64String]);
     }
   };
-  
 
   // Function to handle submission
   const handleSubmit = async () => {
@@ -51,16 +64,16 @@ const StoreRegistrationScreen = () => {
       Alert.alert("Error", "Please complete all fields before submitting!");
       return;
     }
-  
+
     try {
       const auth = getAuth(); // Initialize Firebase Auth
       const user = auth.currentUser;
-  
+
       if (!user) {
         Alert.alert("Error", "You must be logged in to register a store.");
         return;
       }
-  
+
       const retailerData = {
         storeName: storeName.trim(),
         ownerName: ownerName.trim(),
@@ -74,10 +87,10 @@ const StoreRegistrationScreen = () => {
         },
         images: images.filter((image) => image !== undefined), // Filter valid images
       };
-  
+
       const db = getFirestore();
       await setDoc(doc(db, "retailers", user.uid), retailerData); // Save data with UID as the document ID
-  
+
       Alert.alert("Success", "Store registered successfully!");
       navigation.navigate("StoreOwnerHome"); // Navigate to the home page
     } catch (error) {
@@ -85,114 +98,146 @@ const StoreRegistrationScreen = () => {
       Alert.alert("Error", "Failed to register store. Please try again.");
     }
   };
-  
+
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Retailer Registration</Text>
+    <SafeAreaView style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 80 }} // Add bottom padding
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.header}>Retailer Registration</Text>
 
-      {currentStep === 1 && (
-        <View style={styles.section}>
-          <Text style={styles.label}>Store Name:</Text>
-          <TextInput
-            placeholder="Enter store name"
-            value={storeName}
-            onChangeText={setStoreName}
-            style={styles.input}
-          />
+          {currentStep === 1 && (
+            <View style={styles.section}>
+              <Text style={styles.label}>Store Name:</Text>
+              <TextInput
+                placeholder="Enter store name"
+                value={storeName}
+                onChangeText={setStoreName}
+                style={styles.input}
+              />
 
-          <Text style={styles.label}>Owner Name:</Text>
-          <TextInput
-            placeholder="Enter owner name"
-            value={ownerName}
-            onChangeText={setOwnerName}
-            style={styles.input}
-          />
+              <Text style={styles.label}>Owner Name:</Text>
+              <TextInput
+                placeholder="Enter owner name"
+                value={ownerName}
+                onChangeText={setOwnerName}
+                style={styles.input}
+              />
 
-          <Text style={styles.label}>Phone:</Text>
-          <TextInput
-            placeholder="Enter phone number"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            style={styles.input}
-          />
+              <Text style={styles.label}>Phone:</Text>
+              <TextInput
+                placeholder="Enter phone number"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                style={styles.input}
+              />
 
-          <Button title="Next" onPress={() => setCurrentStep(2)} color="#4CAF50" />
-        </View>
-      )}
+              <Button
+                title="Next"
+                onPress={() => setCurrentStep(2)}
+                color="#4CAF50"
+              />
+            </View>
+          )}
 
-      {currentStep === 2 && (
-        <View style={styles.section}>
-          <Text style={styles.label}>Address:</Text>
-          <TextInput
-            placeholder="Enter address"
-            value={address}
-            onChangeText={setAddress}
-            style={styles.input}
-          />
+          {currentStep === 2 && (
+            <View style={styles.section}>
+              <Text style={styles.label}>Address:</Text>
+              <TextInput
+                placeholder="Enter address"
+                value={address}
+                onChangeText={setAddress}
+                style={styles.input}
+              />
 
-          <Text style={styles.label}>Pin Code:</Text>
-          <TextInput
-            placeholder="Enter pin code"
-            value={pinCode}
-            onChangeText={setPinCode}
-            keyboardType="numeric"
-            style={styles.input}
-          />
+              <Text style={styles.label}>Pin Code:</Text>
+              <TextInput
+                placeholder="Enter pin code"
+                value={pinCode}
+                onChangeText={setPinCode}
+                keyboardType="numeric"
+                style={styles.input}
+              />
 
-          <Text style={styles.label}>Store Description:</Text>
-          <TextInput
-            placeholder="Enter store description"
-            value={storeDescription}
-            onChangeText={setStoreDescription}
-            style={styles.input}
-          />
+              <Text style={styles.label}>Store Description:</Text>
+              <TextInput
+                placeholder="Enter store description"
+                value={storeDescription}
+                onChangeText={setStoreDescription}
+                style={styles.input}
+                multiline
+              />
 
-          <Text style={styles.label}>Set Location:</Text>
-          <MapView
-            style={styles.map}
-            initialRegion={{
-              latitude: location.latitude,
-              longitude: location.longitude,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            }}
-            onPress={(event) => setLocation(event.nativeEvent.coordinate)}
-          >
-            <Marker coordinate={location} draggable onDragEnd={(event) => setLocation(event.nativeEvent.coordinate)} />
-          </MapView>
+              <Text style={styles.label}>Set Location:</Text>
+              <MapView
+                style={styles.map}
+                initialRegion={{
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }}
+                onPress={(event) => setLocation(event.nativeEvent.coordinate)}
+              >
+                <Marker
+                  coordinate={location}
+                  draggable
+                  onDragEnd={(event) =>
+                    setLocation(event.nativeEvent.coordinate)
+                  }
+                />
+              </MapView>
 
-          <TouchableOpacity
-            style={[styles.button, { marginBottom: 12 }]}
-            onPress={() => Alert.alert("Location Set", `Lat: ${location.latitude}, Lng: ${location.longitude}`)}
-          >
-            <Text style={styles.buttonText}>Set Location</Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, { marginBottom: 12 }]}
+                onPress={() =>
+                  Alert.alert(
+                    "Location Set",
+                    `Lat: ${location.latitude}, Lng: ${location.longitude}`
+                  )
+                }
+              >
+                <Text style={styles.buttonText}>Set Location</Text>
+              </TouchableOpacity>
 
-          <Text style={styles.label}>Pick Images:</Text>
-          <TouchableOpacity style={styles.button} onPress={pickImage}>
-            <Text style={styles.buttonText}>Pick an Image</Text>
-          </TouchableOpacity>
+              <Text style={styles.label}>Pick Images:</Text>
+              <TouchableOpacity style={styles.button} onPress={pickImage}>
+                <Text style={styles.buttonText}>Pick an Image</Text>
+              </TouchableOpacity>
 
-          <ScrollView horizontal>
-            {images.map((uri, index) => (
-              <Image key={index} source={{ uri }} style={styles.image} />
-            ))}
-          </ScrollView>
+              <ScrollView horizontal contentContainerStyle={styles.imageScroll}>
+                {images.map((uri, index) => (
+                  <Image key={index} source={{ uri }} style={styles.image} />
+                ))}
+              </ScrollView>
 
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 20 }}>
-            <Button title="Back" onPress={() => setCurrentStep(1)} color="#FFA500" />
-            <Button title="Submit" onPress={handleSubmit} color="#4CAF50" />
-          </View>
-        </View>
-      )}
-    </ScrollView>
+              <View style={styles.buttonContainer}>
+                <Button
+                  title="Back"
+                  onPress={() => setCurrentStep(1)}
+                  color="#FFA500"
+                />
+                <Button title="Submit" onPress={handleSubmit} color="#4CAF50" />
+              </View>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     padding: 20,
+    top: 60,
     backgroundColor: "#f7f7f7",
   },
   header: {
@@ -239,6 +284,15 @@ const styles = StyleSheet.create({
     height: 80,
     marginRight: 10,
     borderRadius: 8,
+  },
+  imageScroll: {
+    flexDirection: "row",
+    marginBottom: 12,
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
   },
 });
 

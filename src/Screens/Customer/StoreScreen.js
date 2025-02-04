@@ -16,12 +16,17 @@ const CustomerShopsScreen = () => {
       try {
         const db = getFirestore();
         const querySnapshot = await getDocs(collection(db, "retailers"));
-        const fetchedShops = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const fetchedShops = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            storeName: data.storeName || "Unknown Store",
+            storeDescription: data.storeDescription || "No description available.",
+            images: Array.isArray(data.images) ? data.images : [],
+          };
+        });
         setShops(fetchedShops);
-        setFilteredShops(fetchedShops); // Initialize filteredShops with all shops
+        setFilteredShops(fetchedShops);
       } catch (error) {
         console.error("Error fetching shops: ", error);
         Alert.alert("Error", "Failed to fetch shops. Please try again later.");
@@ -77,12 +82,18 @@ const CustomerShopsScreen = () => {
         data={filteredShops}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Image source={{ uri: item.images[0] }} style={styles.image} />
+            {item.images.length > 0 ? (
+              <Image source={{ uri: item.images[0] }} style={styles.image} />
+            ) : (
+              <View style={[styles.image, styles.placeholderImage]}>
+                <Text style={styles.placeholderText}>No Image</Text>
+              </View>
+            )}
             <Text style={styles.cardTitle}>{item.storeName}</Text>
             <Text style={styles.cardDescription}>{item.storeDescription}</Text>
             <TouchableOpacity
               style={styles.button}
-              onPress={() => navigation.navigate("ShopDetails", { shop: item })}
+              onPress={() => navigation.navigate("ShopDetails", { shopId: item.id })}
             >
               <Text style={styles.buttonText}>View Details</Text>
             </TouchableOpacity>
@@ -150,6 +161,14 @@ const styles = StyleSheet.create({
     height: 150,
     borderRadius: 8,
     marginBottom: 10,
+  },
+  placeholderImage: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#ddd",
+  },
+  placeholderText: {
+    color: "#888",
   },
   cardTitle: {
     fontSize: 18,

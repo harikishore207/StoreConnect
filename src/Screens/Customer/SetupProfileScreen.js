@@ -6,7 +6,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import * as ImageManipulator from "expo-image-manipulator"; // Import Image Manipulator
 import { getAuth } from "firebase/auth";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc,getDoc } from "firebase/firestore";
 import { useNavigation } from "@react-navigation/native";
 
 const SetupProfileScreen = () => {
@@ -80,28 +80,41 @@ const SetupProfileScreen = () => {
       Alert.alert("Error", "Please fill in all fields and provide a profile picture.");
       return;
     }
-
+  
     setLoading(true);
     const auth = getAuth();
     const user = auth.currentUser;
-
+  
     if (user) {
-      const userDetails = {
-        name,
-        phone,
-        address,
-        profilePic, // Now stored as a compressed Base64 string
-        email: user.email,
-      };
-
       try {
         const db = getFirestore();
-        await setDoc(doc(db, "users", user.uid), userDetails);
-        Alert.alert("Success", "Profile setup completed!");
+        const userDocRef = doc(db, "users", user.uid);
+  
+        // Step 1: Get the existing user data
+        const userSnapshot = await getDoc(userDocRef);
+        let existingRole = "Customer"; // Default to Customer if not found
+  
+        if (userSnapshot.exists()) {
+          const userData = userSnapshot.data();
+          existingRole = userData.role || "Customer"; // Preserve existing role
+        }
+  
+        // Step 2: Update user profile while keeping the role
+        const updatedUserDetails = {
+          name,
+          phone,
+          address,
+          profilePic, // Stored as a compressed Base64 string
+          email: user.email,
+          role: existingRole, // ✅ Ensure role is preserved
+        };
+  
+        await setDoc(userDocRef, updatedUserDetails);
+        Alert.alert("Success", "Profile updated successfully!");
         navigation.navigate("CustomerHome");
       } catch (error) {
-        console.error("Error setting up profile:", error);
-        Alert.alert("Error", "Failed to set up your profile.");
+        console.error("Error updating profile:", error);
+        Alert.alert("Error", "Failed to update your profile.");
       } finally {
         setLoading(false);
       }
@@ -109,6 +122,7 @@ const SetupProfileScreen = () => {
       Alert.alert("Error", "User not logged in.");
     }
   };
+  
 
   return (
     <View style={styles.container}>
@@ -178,3 +192,4 @@ const styles = StyleSheet.create({
 });
 
 export default SetupProfileScreen;
+ 

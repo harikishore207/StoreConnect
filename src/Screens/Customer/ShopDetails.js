@@ -1,33 +1,76 @@
-import React from "react";
-import { View, Text, Button, StyleSheet, Image, TouchableOpacity, Alert } from "react-native";
-import MapView, { Marker } from "react-native-maps";
-import { useRoute } from "@react-navigation/native";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { useRoute, useNavigation } from "@react-navigation/native";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "./../../Utils/firebase";  // Ensure correct Firebase config
 
-const ShopDetailsScreen = ({ navigation }) => {
+const ShopDetailsScreen = () => {
   const route = useRoute();
-  const { shop } = route.params;
+  const navigation = useNavigation();
+  const { shopId } = route.params || {}; // Prevent undefined errors
+  const [shop, setShop] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!shopId) {
+      console.error("No shopId provided!");
+      setLoading(false);
+      return;
+    }
+
+    const fetchShopDetails = async () => {
+      try {
+        const docRef = doc(db, "retailers", shopId);
+        const docSnap = await getDoc(docRef);
+    
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+         // console.log("Fetched shop data:", data); // Log fetched data
+          setShop(data);
+        } else {
+          console.error("No such document!");
+        }
+      } catch (error) {
+        console.error("Error fetching shop details:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchShopDetails();
+  }, [shopId]);
 
   const handleViewLocation = () => {
-    navigation.navigate("MapViewScreen", {
-      location: shop.location, // Pass location to the MapView screen
-    });
+    if (!shop.location || !shop.location.latitude || !shop.location.longitude) {
+      Alert.alert("Error", "Location data is missing or invalid.");
+      return;
+    }
+    navigation.navigate("MapViewScreen", { location: shop.location });
   };
 
   const handleOrder = () => {
     Alert.alert("Order", "Order functionality will be implemented soon!");
   };
 
+  if (loading) {
+    return <ActivityIndicator size="large" color="#007BFF" style={styles.loader} />;
+  }
+
+  if (!shop) {
+    return <Text style={styles.errorText}>Shop details not found.</Text>;
+  }
+
   return (
     <View style={styles.container}>
       <Image
-        source={{ uri: shop.images[0] }} // Assuming shop.images is an array of image URIs
+        source={{ uri: shop.images[0] }}
         style={styles.shopImage}
       />
-      <Text style={styles.shopName}>{shop.storeName}</Text>
-      <Text style={styles.ownerName}>Owner : {shop.ownerName}</Text>
-      <Text style={styles.phone}>Phone : {shop.phone}</Text>
-      <Text style={styles.address}>Address : {shop.address}</Text>
-      <Text style={styles.description}>About Us :  {shop.storeDescription}</Text>
+      <Text style={styles.shopName}>{shop.storeName || "No Name"}</Text>
+      <Text style={styles.ownerName}>Owner: {shop.ownerName || "N/A"}</Text>
+      <Text style={styles.phone}>Phone: {shop.phone || "N/A"}</Text>
+      <Text style={styles.address}>Address: {shop.address || "N/A"}</Text>
+      <Text style={styles.description}>About Us: {shop.storeDescription || "No description available"}</Text>
 
       <TouchableOpacity style={styles.button} onPress={handleViewLocation}>
         <Text style={styles.buttonText}>View Location</Text>
@@ -70,6 +113,11 @@ const styles = StyleSheet.create({
     color: "#555",
     marginBottom: 4,
   },
+  address: {
+    fontSize: 16,
+    color: "#555",
+    marginBottom: 4,
+  },
   description: {
     fontSize: 14,
     color: "#666",
@@ -90,5 +138,15 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorText: {
+    textAlign: "center",
+    fontSize: 18,
+    color: "red",
   },
 });

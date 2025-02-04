@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Button, StyleSheet } from "react-native";
+import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "../../Utils/firebase"; // Use 'db' instead of 'firestore'
+import { auth, db } from "../../Utils/firebase";
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -11,45 +11,56 @@ const LoginScreen = ({ navigation }) => {
 
   const handleLogin = async () => {
     setError(null);
-
+  
     if (!email || !password) {
       setError("Please fill in both email and password.");
       return;
     }
-
+  
     try {
-      // Authenticate the user
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // Fetch the user's role from Firestore
-      const userRef = doc(db, "users", user.uid); // Corrected from 'firestore' to 'db'
+  
+      if (!user || !user.uid) {
+        Alert.alert("Error", "User data is missing!");
+        return;
+      }
+  
+      const userRef = doc(db, "users", user.uid);
       const userDoc = await getDoc(userRef);
-
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const userRole = userData.role;
-
-        // Navigate based on the user role
-        if (userRole === "Customer") {
-          navigation.replace("CustomerHome");
-        } else if (userRole === "Retailer") {
-          navigation.replace("StoreOwnerHome");
-        } else {
-          setError("User role is invalid or undefined.");
-        }
+  
+     // console.log("Firestore document data:", userDoc.data());
+  
+      if (!userDoc.exists()) {
+        setError("User document does not exist.");
+        return;
+      }
+  
+      const userData = userDoc.data();
+      const userRole = userData.role;
+  
+      if (!userRole) {
+        setError("User role is missing or undefined.");
+        return;
+      }
+  
+      if (userRole === "Customer") {
+        navigation.replace("CustomerHome");
+      } else if (userRole === "Retailer") {
+        navigation.replace("StoreOwnerHome");
       } else {
-        setError("User data not found in the database.");
+        setError("User role is invalid or undefined.");
       }
     } catch (err) {
       console.error("Login error:", err.message);
       setError("Invalid email or password.");
     }
   };
-
+  
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
+
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -58,6 +69,7 @@ const LoginScreen = ({ navigation }) => {
         keyboardType="email-address"
         autoCapitalize="none"
       />
+
       <TextInput
         style={styles.input}
         placeholder="Password"
@@ -65,8 +77,11 @@ const LoginScreen = ({ navigation }) => {
         value={password}
         onChangeText={setPassword}
       />
+
       {error && <Text style={styles.error}>{error}</Text>}
+
       <Button title="Login" onPress={handleLogin} />
+
       <Text style={styles.signUpText}>
         New user?{" "}
         <Text

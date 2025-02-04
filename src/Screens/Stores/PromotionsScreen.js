@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { getFirestore, collection, addDoc, onSnapshot } from 'firebase/firestore';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import Toast from 'react-native-toast-message';
+import { getAuth } from "firebase/auth";
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -47,27 +48,39 @@ const PromotionsScreen = () => {
   // Pick an Image
   const pickImage = async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
+      let result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
         quality: 1,
+        base64: true, // Convert to Base64
       });
-
-      if (!result.canceled) {
-        setImage(result.assets[0].uri);
+  
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const base64String = `data:image/jpeg;base64,${result.assets[0].base64}`;
+  
+        setImage(base64String);
       }
     } catch (error) {
       console.error('Error picking image:', error.message);
       alert('Failed to pick image. Please try again.');
     }
   };
+  
 
   // Save Promotion to Firestore
   const savePromotionToFirestore = async (imageUrl, description) => {
     try {
+
+      const auth = getAuth(); // ✅ Get Firebase Auth instance
+      const user = auth.currentUser; // ✅ Get the logged-in user
+
+    if (!user) {
+      alert("You must be logged in to post a promotion.");
+      return;
+    }
+
       await addDoc(collection(db, 'promotions'), {
         imageUrl,
+        ownerId: user.uid,
         description,
         createdAt: new Date().toISOString(),
       });
