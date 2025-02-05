@@ -10,7 +10,10 @@ import StoreRegistration from './src/Screens/Signinup/StoreRegistrationScreen';
 import ShopDetails from './src/Screens/Customer/ShopDetails'; 
 import MapViewScreen from './src/Screens/Customer/MapViewScreen';
 import SetupProfileScreen from './src/Screens/Customer/SetupProfileScreen';
-import CartScreen from './src/Screens/Customer/CartScreen'; // ✅ Import CartScreen
+import CartScreen from './src/Screens/Customer/CartScreen'; 
+import SelectShopScreen from './src/Screens/Customer/SelectShopScreen';
+import DeliveryOptionsScreen from './src/Screens/Customer/DeliveryOptionsScreen';
+import OrderSummary from './src/Screens/Customer/OrderSummary';
 
 const Stack = createStackNavigator();
 
@@ -59,11 +62,25 @@ const App = () => {
             component={SetupProfileScreen}
             options={{ headerTitle: "Setup Your Profile" }}
           />
-          {/* ✅ Corrected Cart Screen */}
           <Stack.Screen
             name="CartScreen"
             component={CartScreen}
             options={{ headerTitle: "Your Cart" }}
+          />
+          <Stack.Screen
+            name="SelectShopScreen"
+            component={SelectShopScreen}
+            options={{ headerTitle: "Select a Shop" }}
+          />
+          <Stack.Screen
+            name="DeliveryOptions"
+            component={DeliveryOptionsScreen}
+            options={{ headerTitle: "Delivery Options" }}
+          />
+          <Stack.Screen
+            name="OrderSummary"
+            component={OrderSummary}
+            options={{ headerTitle: "Order Summary" }}
           />
         </Stack.Navigator>
       </NavigationContainer>

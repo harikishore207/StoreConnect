@@ -1,23 +1,60 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import OrdersReceivedScreen from '../Screens/Stores/OrderReceivedScreen';
 import PromotionsScreen from '../Screens/Stores/PromotionsScreen';
 import OrderScreen from '../Screens/Stores/OrderScreen';
 import DeliveryScreen from '../Screens/Stores/DeliveryScreen';
 import ProfileScreen from '../Screens/Stores/ProfileScreenStore';
+import OrderDetailsScreen from '../Screens/Stores/OrderDetailsScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
+
+const OrdersStack = () => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen 
+        name="Orders Received" 
+        component={OrdersReceivedScreen}
+        options={{
+          headerStyle: {
+            backgroundColor: '#2e7d32',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }}
+      />
+      <Stack.Screen 
+        name="OrderDetails" 
+        component={OrderDetailsScreen}
+        options={{ 
+          title: 'Order Details',
+          headerStyle: {
+            backgroundColor: '#2e7d32',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
 
 const BottomTabNavigatorStore = () => {
   return (
     <Tab.Navigator
-      initialRouteName="Orders Received"
+      initialRouteName="Orders"
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => {
           let iconName;
           switch (route.name) {
-            case 'Orders Received':
+            case 'Orders':
               iconName = 'clipboard';
               break;
             case 'Promotions':
@@ -37,11 +74,15 @@ const BottomTabNavigatorStore = () => {
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: 'blue',
+        tabBarActiveTintColor: '#2e7d32',
         tabBarInactiveTintColor: 'gray',
       })}
     >
-      <Tab.Screen name="Orders Received" component={OrdersReceivedScreen} />
+      <Tab.Screen 
+        name="Orders" 
+        component={OrdersStack}
+        options={{ headerShown: false }}
+      />
       <Tab.Screen name="Promotions" component={PromotionsScreen} />
       <Tab.Screen name="Order" component={OrderScreen} />
       <Tab.Screen name="Delivery" component={DeliveryScreen} />
