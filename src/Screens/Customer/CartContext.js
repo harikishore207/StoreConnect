@@ -42,7 +42,6 @@ export const CartProvider = ({ children }) => {
 
   // Add Item to Cart
   const addToCart = (product, brand) => {
-  //  console.log("Adding to cart:", product.name, brand); // Debug log
     setCartItems((prev) => {
       const existingItem = prev.find((item) => item.id === `${product.id}-${brand}`);
       if (existingItem) {
@@ -52,6 +51,7 @@ export const CartProvider = ({ children }) => {
             : item
         );
       } else {
+        const variant = product.variants.find((v) => v.brand === brand);
         return [
           ...prev,
           {
@@ -59,9 +59,11 @@ export const CartProvider = ({ children }) => {
             name: product.name,
             brand,
             quantity: 1,
-            image: product.variants.find((v) => v.brand === brand)?.image,
-            price: product.variants.find((v) => v.brand === brand)?.price,
-            unitPrice: product.variants.find((v) => v.brand === brand)?.price,
+            category: product.category,
+            productId: product.id,
+            image: variant?.image || product.image, // Use variant image if available, otherwise use product image
+            price: variant?.price,
+            unitPrice: variant?.price,
           },
         ];
       }

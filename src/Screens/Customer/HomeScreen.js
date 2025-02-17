@@ -1,138 +1,275 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, Image, TouchableOpacity, StyleSheet, FlatList, Animated, Alert,
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
-import {
-  getFirestore, collection, doc, updateDoc, onSnapshot, getDoc, setDoc, deleteDoc, increment,
+import { AntDesign, Ionicons } from '@expo/vector-icons';
+import { 
+  getFirestore, 
+  collection, 
+  onSnapshot, 
+  doc, 
+  updateDoc, 
+  getDoc,
+  query, 
+  orderBy,
+  setDoc,
+  deleteDoc,
+  writeBatch
 } from 'firebase/firestore';
-import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { AntDesign } from '@expo/vector-icons';
+import { getApp } from 'firebase/app';
 
-// Firebase Configuration
-const firebaseConfig = {
-  apiKey: "your-api-key",
-  authDomain: "your-auth-domain",
-  projectId: "your-project-id",
-  storageBucket: "your-storage-bucket",
-  messagingSenderId: "your-messaging-sender-id",
-  appId: "your-app-id",
-};
-
-// Initialize Firebase
-let app;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApps()[0];
-}
-
-const db = getFirestore(app);
+const db = getFirestore(getApp());
 const auth = getAuth();
 
 const HomeScreen = () => {
   const [posts, setPosts] = useState([]);
   const [userLikes, setUserLikes] = useState({});
-  const likeAnimations = useRef({}).current;
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
-  
-    const promotionsRef = collection(db, 'promotions');
-    const unsubscribe = onSnapshot(promotionsRef, async (snapshot) => {
-      const promotionsList = await Promise.all(
-        snapshot.docs.map(async (docSnap) => {
-          const postData = docSnap.data();
-          const storeProfile = await fetchStoreProfile(postData.ownerId);
-  
-          // Check if the user has liked this post
-          const likeDocRef = doc(db, `promotions/${docSnap.id}/likes`, user.uid);
-          const likeDocSnap = await getDoc(likeDocRef);
-          const isLiked = likeDocSnap.exists(); // If the doc exists, user has liked the post
-  
-          return {
-            id: docSnap.id,
-            likeCount: postData.likeCount || 0,
-            ownerId: postData.ownerId || null,
-            imageUrl: postData.imageUrl || '',
-            description: postData.description || '',
-            storeName: storeProfile?.storeName || 'Unknown Store',
-            likedByUser: isLiked,
-          };
+  const fetchStoreProfiles = async (ownerIds) => {
+    try {
+      const storeProfiles = {};
+      await Promise.all(
+        ownerIds.map(async (ownerId) => {
+          if (ownerId) {
+            const storeRef = doc(db, 'retailers', ownerId);
+            const storeDoc = await getDoc(storeRef);
+            if (storeDoc.exists()) {
+              storeProfiles[ownerId] = storeDoc.data();
+            }
+          }
         })
       );
-  
-      setPosts(promotionsList);
-  
-      // Update userLikes state
-      const likesMap = {};
-      promotionsList.forEach((post) => {
-        likesMap[post.id] = post.likedByUser;
-      });
-      setUserLikes(likesMap);
-    });
-  
-    return () => unsubscribe();
-  }, []);
-  
+      return storeProfiles;
+    } catch (error) {
+      console.error('Error fetching store profiles:', error);
+      return {};
+    }
+  };
 
-  const fetchStoreProfile = async (ownerId) => {
-    if (!ownerId) return null;
-    const storeDocRef = doc(db, 'retailers', ownerId);
-    const storeDocSnap = await getDoc(storeDocRef);
-    return storeDocSnap.exists() ? storeDocSnap.data() : null;
+  const fetchUserLikes = async (postIds) => {
+    const user = auth.currentUser;
+    if (!user || !postIds.length) return {};
+    
+    try {
+      const likesData = {};
+      await Promise.all(
+        postIds.map(async (postId) => {
+          const likeRef = doc(db, `promotions/${postId}/likes`, user.uid);
+          const likeDoc = await getDoc(likeRef);
+          likesData[postId] = likeDoc.exists();
+        })
+      );
+      return likesData;
+    } catch (error) {
+      console.error('Error fetching user likes:', error);
+      return {};
+    }
   };
 
   const handleLike = async (postId) => {
-    const user = auth.currentUser;
-    if (!user) {
-      Alert.alert("Login Required", "You must be logged in to like posts.");
-      return;
-    }
-
-    const postDocRef = doc(db, "promotions", postId);
-    const likeDocRef = doc(db, `promotions/${postId}/likes`, user.uid);
-
     try {
-      if (userLikes[postId]) {
-        await deleteDoc(likeDocRef);
-        await updateDoc(postDocRef, { likeCount: increment(-1) });
-        setUserLikes((prev) => ({ ...prev, [postId]: false }));
+      const user = auth.currentUser;
+      if (!user) return;
+
+      // Optimistic UI update
+      const isCurrentlyLiked = userLikes[postId];
+      setUserLikes(prev => ({
+        ...prev,
+        [postId]: !isCurrentlyLiked
+      }));
+
+      const batch = writeBatch(db);
+      const postRef = doc(db, 'promotions', postId);
+      const likeRef = doc(db, `promotions/${postId}/likes`, user.uid);
+
+      const postDoc = await getDoc(postRef);
+      if (!postDoc.exists()) return;
+
+      const currentLikes = postDoc.data().likeCount || 0;
+
+      if (!isCurrentlyLiked) {
+        batch.set(likeRef, {
+          userId: user.uid,
+          createdAt: new Date().toISOString()
+        });
+        batch.update(postRef, { likeCount: currentLikes + 1 });
       } else {
-        await setDoc(likeDocRef, { liked: true });
-        await updateDoc(postDocRef, { likeCount: increment(1) });
-        setUserLikes((prev) => ({ ...prev, [postId]: true }));
+        batch.delete(likeRef);
+        batch.update(postRef, { likeCount: Math.max(0, currentLikes - 1) });
       }
+
+      await batch.commit();
+
+      // Update posts state
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.id === postId 
+            ? { 
+                ...post, 
+                likeCount: !isCurrentlyLiked ? currentLikes + 1 : Math.max(0, currentLikes - 1)
+              }
+            : post
+        )
+      );
+
     } catch (error) {
-      console.error("Error toggling like:", error);
-      Alert.alert("Error", "Failed to update like.");
+      console.error('Error updating like:', error);
+      // Revert optimistic update on error
+      setUserLikes(prev => ({
+        ...prev,
+        [postId]: !prev[postId]
+      }));
     }
   };
 
+  const fetchPosts = () => {
+    try {
+      const postsRef = collection(db, 'promotions');
+      const q = query(postsRef, orderBy('createdAt', 'desc'));
+
+      return onSnapshot(q, async (snapshot) => {
+        const postDocs = snapshot.docs;
+        
+        // Get unique owner IDs
+        const ownerIds = [...new Set(postDocs.map(doc => doc.data().ownerId))];
+        
+        // Fetch all store profiles and likes in parallel
+        const [storeProfiles, likesData] = await Promise.all([
+          fetchStoreProfiles(ownerIds),
+          fetchUserLikes(postDocs.map(doc => doc.id))
+        ]);
+        
+        // Process posts with store information
+        const postsData = postDocs.map(doc => {
+          const postData = doc.data();
+          const storeProfile = storeProfiles[postData.ownerId];
+          
+          return {
+            id: doc.id,
+            ...postData,
+            storeName: storeProfile?.storeName || 'Unknown Store',
+            timeAgo: getTimeAgo(postData.createdAt)
+          };
+        });
+
+        setPosts(postsData);
+        setUserLikes(likesData);
+        setLoading(false);
+        setRefreshing(false);
+      });
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      setLoading(false);
+      setRefreshing(false);
+      return () => {};
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = fetchPosts();
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, []);
+
+  const getTimeAgo = (timestamp) => {
+    if (!timestamp) return 'Recently';
+    
+    const now = new Date();
+    const postDate = new Date(timestamp);
+    const diffInSeconds = Math.floor((now - postDate) / 1000);
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  };
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    fetchPosts();
+  }, []);
+
+  const renderItem = ({ item }) => (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.userInfo}>
+          <View style={styles.storeLogo}>
+            <Text style={styles.storeInitial}>{item.storeName?.[0] || 'S'}</Text>
+          </View>
+          <Text style={styles.storeName}>{item.storeName}</Text>
+        </View>
+        <Text style={styles.timeAgo}>{item.timeAgo}</Text>
+      </View>
+
+      <View style={styles.imageContainer}>
+        <Image 
+          source={{ uri: item.imageUrl }} 
+          style={styles.image}
+          resizeMode="contain"
+        />
+      </View>
+
+      <View style={styles.cardContent}>
+        <View style={styles.actions}>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={() => handleLike(item.id)}
+          >
+            <AntDesign
+              name={userLikes[item.id] ? "heart" : "hearto"}
+              size={24}
+              color={userLikes[item.id] ? "#ff3b30" : "#000"}
+            />
+            <Text style={styles.likeCount}>{item.likeCount || 0}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="share-social-outline" size={24} color="#000" />
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.description}>{item.description}</Text>
+      </View>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0095f6" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Store Promotions</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Welcome to Store Connect</Text>
+      </View>
       <FlatList
         data={posts}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.storeName}>{item.storeName}</Text>
-            <Image source={{ uri: item.imageUrl }} style={styles.image} />
-            <Text style={styles.cardTitle}>{item.description}</Text>
-            <View style={styles.actions}>
-              <TouchableOpacity onPress={() => handleLike(item.id)}>
-                <AntDesign
-                  name={userLikes[item.id] ? "heart" : "hearto"}
-                  size={24}
-                  color={userLikes[item.id] ? "#ff5252" : "#000"}
-                />
-              </TouchableOpacity>
-              <Text style={styles.likeCount}>{item.likeCount} likes</Text>
-            </View>
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No promotions available</Text>
           </View>
         )}
-        keyExtractor={(item) => item.id}
       />
     </View>
   );
@@ -141,54 +278,109 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#f7f7f7',
+    paddingTop: 50,
+    backgroundColor: '#f8f9fa',
   },
-  title: {
-    fontSize: 24,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  header: {
+    padding: 16,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e1e1e1',
+  },
+  headerTitle: {
+    fontSize: 20,
+    justifyContent: 'center',
+    textAlign: 'center',  
     fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-    color: '#333',
+    color: '#1a1a1a',
   },
   card: {
     backgroundColor: 'white',
-    padding: 15,
-    marginBottom: 15,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 4,
+    marginBottom: 8,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#e1e1e1',
   },
-  storeName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#444',
-    marginBottom: 5,
-  },
-  image: {
-    width: '100%',
-    height: 250,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  cardTitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 10,
-  },
-  actions: {
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    padding: 12,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  storeLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#0095f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  storeInitial: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  storeName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  timeAgo: {
+    fontSize: 14,
+    color: '#666',
+  },
+  imageContainer: {
+    width: '100%',
+    height: 300,
+    backgroundColor: '#f0f0f0',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  cardContent: {
+    padding: 12,
+  },
+  actions: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 20,
   },
   likeCount: {
+    marginLeft: 6,
     fontSize: 16,
-    color: '#555',
+    color: '#1a1a1a',
+  },
+  description: {
+    fontSize: 15,
+    color: '#1a1a1a',
+    lineHeight: 20,
   },
 });
 
 export default HomeScreen;
-

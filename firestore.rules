@@ -1,0 +1,72 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Allow users to manage their own profiles
+    match /users/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow reading all shops
+    match /shops/{shopId} {
+      allow read: if request.auth != null;
+    }
+
+    // Allow users to read and update their own customer profile
+    match /customers/{customerId} {
+      allow create: if request.auth != null && 
+                   request.auth.uid == customerId && 
+                   request.resource.data.userId == request.auth.uid;
+      
+      allow read: if request.auth != null && (
+        // Allow read if document belongs to user
+        customerId == request.auth.uid ||
+        // Or if document has userId field matching user's ID
+        (resource != null && resource.data.userId == request.auth.uid)
+      );
+      
+      allow update: if request.auth != null && 
+                   customerId == request.auth.uid &&
+                   request.resource.data.userId == request.auth.uid;
+    }
+
+    // Retailers can read all stores but only edit their own
+    match /retailers/{retailerId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == retailerId;
+    }
+
+    // Stores collection (Retailers manage their own stores)
+    match /stores/{storeId} {
+      allow read: if request.auth != null; // Anyone logged in can read stores
+      allow write: if request.auth != null && request.auth.token.role == "Retailer";
+    }
+
+    // Promotions
+    match /promotions/{promotionId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
+    }
+
+    // Likes subcollection
+    match /promotions/{promotionId}/likes/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow orders to be created by authenticated users
+    match /orders/{orderId} {
+      allow read, write: if true;
+    }
+
+    // Allow users to read and write their own addresses
+    match /addresses/{addressId} {
+      allow create: if request.auth != null && 
+                   request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if request.auth != null && 
+                                 resource.data.userId == request.auth.uid;
+    }
+  }
+}

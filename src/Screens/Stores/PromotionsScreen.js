@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, Image, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, Image, StyleSheet, TouchableOpacity, Platform, KeyboardAvoidingView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { getFirestore, collection, addDoc, onSnapshot } from 'firebase/firestore';
-import { getApp, getApps, initializeApp } from 'firebase/app';
-import Toast from 'react-native-toast-message';
+import { getFirestore, collection, addDoc } from 'firebase/firestore';
 import { getAuth } from "firebase/auth";
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
+import { getApp, initializeApp } from 'firebase/app';
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -18,201 +19,226 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let app;
-if (!getApps().length) {
+if (!getApp().length) {
   app = initializeApp(firebaseConfig);
 } else {
-  app = getApps()[0];
+  app = getApp()[0];
 }
 
 const db = getFirestore(app);
+const auth = getAuth();
 
 const PromotionsScreen = () => {
   const [image, setImage] = useState(null);
   const [description, setDescription] = useState('');
-  const [promotions, setPromotions] = useState([]);
 
-  // Fetch Promotions from Firestore
-  useEffect(() => {
-    const promotionsRef = collection(db, 'promotions');
-    const unsubscribe = onSnapshot(promotionsRef, (snapshot) => {
-      const promotionsList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setPromotions(promotionsList);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // Pick an Image
   const pickImage = async () => {
     try {
       let result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 1,
-        base64: true, // Convert to Base64
+        base64: true,
+        allowsEditing: false,
       });
-  
+
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const base64String = `data:image/jpeg;base64,${result.assets[0].base64}`;
-  
         setImage(base64String);
       }
     } catch (error) {
       console.error('Error picking image:', error.message);
-      alert('Failed to pick image. Please try again.');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to pick an image. Please try again.',
+      });
     }
   };
-  
 
-  // Save Promotion to Firestore
-  const savePromotionToFirestore = async (imageUrl, description) => {
+  const savePromotionToFirestore = async () => {
     try {
+      const user = auth.currentUser;
+      if (!user) {
+        Toast.show({
+          type: 'error',
+          text1: 'Authentication Required',
+          text2: 'You must be logged in to post a promotion.',
+        });
+        return;
+      }
 
-      const auth = getAuth(); // ✅ Get Firebase Auth instance
-      const user = auth.currentUser; // ✅ Get the logged-in user
-
-    if (!user) {
-      alert("You must be logged in to post a promotion.");
-      return;
-    }
+      if (!image || !description.trim()) {
+        Toast.show({
+          type: 'error',
+          text1: 'Missing Content',
+          text2: 'Please add both an image and description.',
+        });
+        return;
+      }
 
       await addDoc(collection(db, 'promotions'), {
-        imageUrl,
+        imageUrl: image,
         ownerId: user.uid,
-        description,
+        description: description.trim(),
         createdAt: new Date().toISOString(),
       });
 
-      // Display Success Toast
       Toast.show({
         type: 'success',
-        position: 'bottom',
-        text1: 'Promotion Posted',
-        text2: 'The promotion was successfully uploaded!',
+        text1: 'Success',
+        text2: 'Your promotion has been posted!',
       });
 
       setImage(null);
       setDescription('');
     } catch (error) {
       console.error('Error posting promotion:', error.message);
-      // Display Error Toast
       Toast.show({
         type: 'error',
-        position: 'bottom',
-        text1: 'Failed to Post Promotion',
-        text2: 'There was an error uploading the promotion.',
+        text1: 'Error',
+        text2: 'Failed to post promotion. Please try again.',
       });
     }
   };
 
-  // Post Promotion
-  const handlePost = async () => {
-    if (!image || !description) {
-      alert('Please add an image and description.');
-      return;
-    }
-
-    try {
-      // Using the local URI of the image as the image URL
-      const imageUrl = image; // In this case, we're using the local URI directly
-
-      savePromotionToFirestore(imageUrl, description);
-    } catch (error) {
-      console.error('Error posting promotion:', error.message);
-      alert('Failed to post promotion. Please try again.');
-    }
-  };
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Create Promotion</Text>
-      <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
-        {image ? (
-          <Image source={{ uri: image }} style={styles.image} />
-        ) : (
-          <Text style={styles.imageText}>Pick an Image</Text>
-        )}
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Create Post</Text>
+      </View>
+
+      <View style={styles.content}>
+        <TouchableOpacity 
+          style={[styles.imagePickerContainer, image && styles.imageSelected]} 
+          onPress={pickImage}
+        >
+          {image ? (
+            <Image source={{ uri: image }} style={styles.selectedImage} />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <MaterialIcons name="add-photo-alternate" size={40} color="#666" />
+              <Text style={styles.imagePlaceholderText}>Add Photo</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Write something about your promotion..."
+            placeholderTextColor="#666"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            textAlignVertical="top"
+          />
+        </View>
+      </View>
+
+      <TouchableOpacity 
+        style={[
+          styles.postButton,
+          (!image || !description.trim()) && styles.postButtonDisabled
+        ]} 
+        onPress={savePromotionToFirestore}
+        disabled={!image || !description.trim()}
+      >
+        <Ionicons name="send" size={20} color="white" />
+        <Text style={styles.postButtonText}>Post</Text>
       </TouchableOpacity>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter description"
-        value={description}
-        onChangeText={setDescription}
-      />
-      <Button title="Post Promotion" onPress={handlePost} />
-      <FlatList
-        data={promotions}
-        renderItem={({ item }) => (
-          <View style={styles.promotionCard}>
-            <Image source={{ uri: item.imageUrl }} style={styles.promotionImage} />
-            <Text style={styles.promotionText}>{item.description}</Text>
-          </View>
-        )}
-        keyExtractor={(item) => item.id}
-      />
-      <Toast ref={(ref) => Toast.setRef(ref)} /> 
-    </View>
+
+      <Toast />
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#f7f7f7',
+    backgroundColor: '#f8f9fa',
   },
-  title: {
-    fontSize: 24,
+  header: {
+    padding: 16,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e1e1e1',
+  },
+  headerTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
+    color: '#1a1a1a',
   },
-  imagePicker: {
-    height: 150,
-    backgroundColor: '#e0e0e0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    borderRadius: 8,
+  content: {
+    flex: 1,
+    padding: 16,
   },
-  image: {
+  imagePickerContainer: {
+    width: '100%',
+    height: 300,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  imageSelected: {
+    backgroundColor: '#000',
+  },
+  selectedImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 8,
+    resizeMode: 'contain',
   },
-  imageText: {
-    color: '#888',
+  imagePlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imagePlaceholderText: {
+    marginTop: 8,
+    color: '#666',
     fontSize: 16,
   },
-  input: {
-    height: 40,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    marginBottom: 20,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-  },
-  promotionCard: {
+  inputContainer: {
     backgroundColor: 'white',
-    padding: 15,
-    marginBottom: 15,
-    borderRadius: 8,
+    borderRadius: 12,
+    padding: 12,
+    minHeight: 120,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  promotionImage: {
-    width: '100%',
-    height: 150,
-    borderRadius: 8,
-    marginBottom: 10,
+  input: {
+    fontSize: 16,
+    color: '#1a1a1a',
+    minHeight: 100,
   },
-  promotionText: {
-    fontSize: 18,
+  postButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0095f6',
+    padding: 16,
+    margin: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  postButtonDisabled: {
+    backgroundColor: '#b2dffc',
+  },
+  postButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: '600',
+    marginLeft: 8,
   },
 });
 

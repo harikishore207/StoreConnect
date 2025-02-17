@@ -79,7 +79,10 @@ const OrderScreen = ({ navigation }) => {
                           showCartMessage(); // Trigger animation
                         }}
                       >
-                        <Image source={variant.image} style={styles.productImage} />
+                        <Image 
+                          source={variant.image || product.image} 
+                          style={styles.productImage} 
+                        />
                         <Text style={styles.variantText}>
                           {variant.brand} - {variant.type}
                         </Text>
@@ -123,6 +126,7 @@ const OrderScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 50,
     backgroundColor: "#f7f7f7",
     padding: 10,
   },

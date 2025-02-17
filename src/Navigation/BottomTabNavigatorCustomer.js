@@ -18,32 +18,37 @@ const BottomTabNavigatorCustomer = () => {
           let iconName;
           switch (route.name) {
             case 'Home':
-              iconName = 'home';
+              iconName = 'home-outline';
               break;
             case 'Store':
-              iconName = 'storefront';
+              iconName = 'storefront-outline';
               break;
             case 'Order':
-              iconName = 'add-circle';
+              iconName = 'receipt-outline';
               break;
             case 'Cart':
-              iconName = 'cart';
+              iconName = 'cart-outline';
               break;
             case 'Profile':
-              iconName = 'person';
+              iconName = 'person-outline';
               break;
             default:
-              iconName = 'help-circle';
+              iconName = 'help-circle-outline';
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: 'blue',
         tabBarInactiveTintColor: 'gray',
+        // headerShown: false, 
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen 
+        name="Home" 
+        component={HomeScreen} 
+        options={{ headerShown: false }} // ✅ Hide header only for Home
+      />
       <Tab.Screen name="Store" component={StoreScreen} />
-      <Tab.Screen name="Order" component={OrderScreen} options={{ tabBarLabel: 'Order' }} />
+      <Tab.Screen name="Order" component={OrderScreen} options={{ tabBarLabel: 'Order',headerShown:false }} />
       <Tab.Screen name="Cart" component={CartScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>

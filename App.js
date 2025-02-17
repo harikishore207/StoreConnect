@@ -1,18 +1,21 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { CartProvider } from './src/Screens/Customer/CartContext';
 import LoginScreen from './src/Screens/Signinup/LoginScreen';
 import SignupScreen from './src/Screens/Signinup/SignupScreen';
 import BottomTabNavigatorCustomer from './src/Navigation/BottomTabNavigatorCustomer';
-import BottomTabNavigatorStore from './src/Navigation/BottomTabNavigatorStore';
 import StoreRegistration from './src/Screens/Signinup/StoreRegistrationScreen';
 import ShopDetails from './src/Screens/Customer/ShopDetails'; 
 import MapViewScreen from './src/Screens/Customer/MapViewScreen';
 import SetupProfileScreen from './src/Screens/Customer/SetupProfileScreen';
-import CartScreen from './src/Screens/Customer/CartScreen'; // ✅ Import CartScreen
+import CartScreen from './src/Screens/Customer/CartScreen'; 
+import SelectShopScreen from './src/Screens/Customer/SelectShopScreen';
+import DeliveryOptionsScreen from './src/Screens/Customer/DeliveryOptionsScreen';
+import OrderSummary from './src/Screens/Customer/OrderSummary';
+import BottomTabNavigatorStore from './src/Navigation/BottomTabNavigatorStore';
 
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 
 const App = () => {
   return (
@@ -59,11 +62,61 @@ const App = () => {
             component={SetupProfileScreen}
             options={{ headerTitle: "Setup Your Profile" }}
           />
-          {/* ✅ Corrected Cart Screen */}
           <Stack.Screen
             name="CartScreen"
             component={CartScreen}
-            options={{ headerTitle: "Your Cart" }}
+            options={{
+              headerStyle: {
+                backgroundColor: '#2e7d32',
+              },
+              headerTintColor: '#fff',
+              headerTitleStyle: {
+                fontWeight: 'bold',
+              },
+              headerTitle: "Your Cart"
+            }}
+          />
+          <Stack.Screen
+            name="SelectShopScreen"
+            component={SelectShopScreen}
+            options={{
+              title: 'Select a Shop',
+              headerStyle: {
+                backgroundColor: '#2e7d32',
+              },
+              headerTintColor: '#fff',
+              headerTitleStyle: {
+                fontWeight: 'bold',
+              },
+            }}
+          />
+          <Stack.Screen
+            name="DeliveryOptions"
+            component={DeliveryOptionsScreen}
+            options={{
+              title: 'Delivery Options',
+              headerStyle: {
+                backgroundColor: '#2e7d32',
+              },
+              headerTintColor: '#fff',
+              headerTitleStyle: {
+                fontWeight: 'bold',
+              },
+            }}
+          />
+          <Stack.Screen
+            name="OrderSummary"
+            component={OrderSummary}
+            options={{
+              title: 'Order Summary',
+              headerStyle: {
+                backgroundColor: '#2e7d32',
+              },
+              headerTintColor: '#fff',
+              headerTitleStyle: {
+                fontWeight: 'bold',
+              },
+            }}
           />
         </Stack.Navigator>
       </NavigationContainer>

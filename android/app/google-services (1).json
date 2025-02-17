@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "655261131202",
+    "firebase_url": "https://storeconnect-27e4b-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "storeconnect-27e4b",
+    "storage_bucket": "storeconnect-27e4b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:655261131202:android:504d9e57eaffe89b04365b",
+        "android_client_info": {
+          "package_name": "com.storeconnect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAs5tkOl1LHWDOqPEa9snJ1JW8T_rHSqhs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
