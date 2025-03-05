@@ -14,6 +14,8 @@ import SelectShopScreen from './src/Screens/Customer/SelectShopScreen';
 import DeliveryOptionsScreen from './src/Screens/Customer/DeliveryOptionsScreen';
 import OrderSummary from './src/Screens/Customer/OrderSummary';
 import BottomTabNavigatorStore from './src/Navigation/BottomTabNavigatorStore';
+import OrderScreen from './src/Screens/Customer/OrderScreenCustomer';
+import OrderDetails from './src/Screens/Stores/OrderDetails';
 
 const Stack = createNativeStackNavigator();
 
@@ -109,6 +111,34 @@ const App = () => {
             component={OrderSummary}
             options={{
               title: 'Order Summary',
+              headerStyle: {
+                backgroundColor: '#2e7d32',
+              },
+              headerTintColor: '#fff',
+              headerTitleStyle: {
+                fontWeight: 'bold',
+              },
+            }}
+          />
+          <Stack.Screen
+            name="order"
+            component={OrderScreen}
+            options={{
+              title: 'Order',
+              headerStyle: {
+                backgroundColor: '#2e7d32',
+              },
+              headerTintColor: '#fff',
+              headerTitleStyle: {
+                fontWeight: 'bold',
+              },
+            }}
+          />
+           <Stack.Screen
+            name="OrderDetails"
+            component={OrderDetails}
+            options={{
+              title: 'OrderDetails',
               headerStyle: {
                 backgroundColor: '#2e7d32',
               },

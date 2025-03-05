@@ -46,6 +46,12 @@ const OrderSummary = () => {
   const [userDetails, setUserDetails] = useState(null);
 
   useEffect(() => {
+    if (!deliveryDetails?.shop) {
+      Alert.alert('Error', 'Shop details missing');
+      navigation.goBack();
+      return;
+    }
+
     const fetchUserDetails = async () => {
       try {
         const docRef = doc(db, "users", auth.currentUser.uid);
@@ -64,7 +70,7 @@ const OrderSummary = () => {
     if (auth.currentUser) {
       fetchUserDetails();
     }
-  }, [auth.currentUser, db]);
+  }, [auth.currentUser, db, deliveryDetails]);
 
   if (!auth.currentUser) {
     navigation.navigate('Login');
@@ -184,6 +190,12 @@ const OrderSummary = () => {
         <Text style={styles.sectionTitle}>Shop Details</Text>
         <Text style={styles.text}>Name: {deliveryDetails.shop.storeName}</Text>
         <Text style={styles.text}>Location: {deliveryDetails.shop.address}</Text>
+        {deliveryDetails.type === 'pickup' && (
+          <>
+            <Text style={styles.text}>Pickup Date: {formatDate(deliveryDetails.pickupDate)}</Text>
+            <Text style={styles.text}>Pickup Time: {deliveryDetails.pickupTime}</Text>
+          </>
+        )}
       </View>
 
       <View style={styles.section}>
@@ -208,21 +220,12 @@ const OrderSummary = () => {
         <Text style={styles.sectionTitle}>Delivery Method</Text>
         <Text style={styles.text}>{deliveryDetails.type === 'pickup' ? 'Store Pickup' : 'Door Delivery'}</Text>
 
-        {deliveryDetails.type === 'pickup' ? (
-          <>
-            <Text style={styles.text}>
-              Pickup Date: {formatDate(deliveryDetails.pickupDate)}
-            </Text>
-            <Text style={styles.text}>
-              Pickup Time: {deliveryDetails.pickupTime}
-            </Text>
-          </>
-        ) : (
+        {deliveryDetails.type === 'delivery' ? (
           <>
             <Text style={styles.text}>Delivery Address: {deliveryDetails.address}</Text>
             <Text style={styles.text}>Phone Number: {deliveryDetails.phoneNo}</Text>
           </>
-        )}
+        ) : null}
       </View>
 
       <TouchableOpacity
@@ -351,7 +354,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
-    marginBottom: 30,
+    marginBottom: 30,  
   },
   confirmButtonText: {
     color: 'white',

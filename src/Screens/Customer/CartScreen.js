@@ -3,14 +3,20 @@ import { View, Text, FlatList, Image, StyleSheet, TouchableOpacity, Modal } from
 import { useCart } from "../Customer/CartContext";
 import { useNavigation } from "@react-navigation/native";
 
-const CartScreen = () => {
+const CartScreen = ({ route, navigation }) => {
   const { cartItems, removeFromCart } = useCart();
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const navigation = useNavigation();
+  const { selectedShop, fromShopDetails } = route.params || {};
 
   const handleConfirmItems = () => {
     setIsModalVisible(false);
-    navigation.navigate("SelectShopScreen");
+    if (fromShopDetails && selectedShop) {
+      // Skip shop selection and go directly to delivery options
+      navigation.navigate("DeliveryOptions", { selectedShop: selectedShop });
+    } else {
+      // Normal flow - go to shop selection
+      navigation.navigate("SelectShopScreen");
+    }
   };
 
   return (

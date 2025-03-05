@@ -7,7 +7,7 @@ import { categories } from "../../../assets/data";
 import { products } from "../../../assets/data";
 import { useCart } from "../Customer/CartContext"; // Import useCart
 
-const OrderScreen = ({ navigation }) => {
+const OrderScreen = ({ navigation, route }) => {
   const { addToCart } = useCart(); // Use addToCart from CartContext
   const [searchQuery, setSearchQuery] = useState("");
   const fadeAnim = useRef(new Animated.Value(0)).current; // Animation state
@@ -38,6 +38,8 @@ const OrderScreen = ({ navigation }) => {
     );
     return matchesName || matchesVariant;
   });
+
+  const { selectedShop } = route.params || {};
 
   return (
     <View style={styles.container}>
@@ -115,7 +117,10 @@ const OrderScreen = ({ navigation }) => {
       {/* 🛒 View Cart Button */}
       <TouchableOpacity
         style={styles.cartButton}
-        onPress={() => navigation.navigate("Cart")}
+        onPress={() => navigation.navigate("CartScreen", { 
+          selectedShop,
+          fromShopDetails: true
+        })}
       >
         <Text style={styles.cartButtonText}>View Cart</Text>
       </TouchableOpacity>

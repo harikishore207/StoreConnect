@@ -96,7 +96,7 @@ const SelectShopScreen = () => {
 
   const handleProceed = () => {
     if (selectedShop) {
-      navigation.navigate("DeliveryOptions", { shop: selectedShop });
+      navigation.navigate("DeliveryOptions", { selectedShop: selectedShop });
     }
   };
 

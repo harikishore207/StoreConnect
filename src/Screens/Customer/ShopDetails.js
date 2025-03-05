@@ -49,7 +49,14 @@ const ShopDetailsScreen = () => {
   };
 
   const handleOrder = () => {
-    Alert.alert("Order", "Order functionality will be implemented soon!");
+    // Navigate to cart with shop details
+    navigation.navigate("order", { 
+      selectedShop: {
+        id: shopId,
+        ...shop,
+      },
+      fromShopDetails: true // Flag to indicate navigation came from shop details
+    });
   };
 
   if (loading) {

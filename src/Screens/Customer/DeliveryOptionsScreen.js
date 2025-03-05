@@ -17,7 +17,7 @@ import { getAuth } from 'firebase/auth';
 const DeliveryOptionsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { shop } = route.params;
+  const { selectedShop } = route.params || {};
   const auth = getAuth();
 
   const [deliveryType, setDeliveryType] = useState('');
@@ -30,8 +30,12 @@ const DeliveryOptionsScreen = () => {
   const [showManualTimeInput, setShowManualTimeInput] = useState(false);
 
   useEffect(() => {
+    if (!selectedShop) {
+      Alert.alert('Error', 'No shop selected');
+      navigation.goBack();
+    }
     fetchUserDetails();
-  }, []);
+  }, [selectedShop, navigation]);
 
   const fetchUserDetails = async () => {
     try {
@@ -208,16 +212,15 @@ const DeliveryOptionsScreen = () => {
 
     const deliveryDetails = {
       type: deliveryType,
-      shop: route.params.shop,
+      shop: selectedShop,
+      ...(deliveryType === 'pickup' ? {
+        pickupDate: formattedDate,
+        pickupTime: pickupTime,
+      } : {
+        address: address.trim(),
+        phoneNo: phoneNo.trim(),
+      })
     };
-
-    if (deliveryType === 'pickup') {
-      deliveryDetails.pickupDate = formattedDate;
-      deliveryDetails.pickupTime = pickupTime;
-    } else {
-      deliveryDetails.address = address.trim();
-      deliveryDetails.phoneNo = phoneNo.trim();
-    }
 
     navigation.navigate('OrderSummary', { deliveryDetails });
   };

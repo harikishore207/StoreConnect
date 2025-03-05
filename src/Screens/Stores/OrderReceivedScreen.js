@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../../Utils/firebase';
 import { getAuth } from 'firebase/auth';
 import { formatCurrency } from '../../Utils/currency';
@@ -16,7 +16,11 @@ const OrdersReceivedScreen = ({ navigation }) => {
   const fetchOrders = async () => {
     try {
       const ordersRef = collection(db, 'orders');
-      const q = query(ordersRef, where('shopId', '==', auth.currentUser?.uid));
+      const q = query(
+        ordersRef, 
+        where('shopId', '==', auth.currentUser?.uid),
+        orderBy('createdAt', 'desc') // Ensures newest orders appear first
+      );
       const querySnapshot = await getDocs(q);
       const ordersData = querySnapshot.docs.map(doc => ({
         id: doc.id,
@@ -41,15 +45,22 @@ const OrdersReceivedScreen = ({ navigation }) => {
       onPress={() => navigation.navigate('OrderDetails', { order: item })}
     >
       <View style={styles.orderHeader}>
-        <Text style={styles.orderTitle}>Order {item.id.slice(-6)}</Text>
+        <Text style={styles.orderTitle}>Order</Text>
         <Text style={styles.orderStatus}>{item.status || 'pending'}</Text>
       </View>
-      
       <View style={styles.orderInfo}>
-        <Text style={styles.infoText}>Customer: {item.userName || 'N/A'}</Text>
-        <Text style={styles.infoText}>Items: {(item.items || []).length}</Text>
-        <Text style={styles.infoText}>Total: {formatCurrency(item.totalAmount || 0)}</Text>
-        <Text style={styles.dateText}>Ordered on: {formatDate(item.createdAt)}</Text>
+        <Text style={styles.infoText}>
+          Customer: <Text style={styles.innerText}>{item.userName || 'N/A'}</Text>
+        </Text>
+        <Text style={styles.infoText}>
+          Items: <Text style={styles.innerText}>{(item.items || []).length}</Text>
+        </Text>
+        <Text style={styles.infoText}>
+          Total: <Text style={styles.innerText}>{formatCurrency(item.totalAmount || 0)}</Text>
+        </Text>
+        <Text style={styles.dateText}>
+          Ordered on: <Text style={styles.innerText}>{formatDate(item.createdAt)}</Text>
+        </Text>
       </View>
 
       <TouchableOpacity 
@@ -131,6 +142,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginBottom: 4,
+  },
+  innerText: {
+    fontSize: 16,
+    color: '#333', // Adjust color for nested text
+    fontWeight: '500',
   },
   dateText: {
     fontSize: 14,
